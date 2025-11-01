@@ -164,7 +164,7 @@ app.get("/api/zelle-payment", (req, res) => {
 // Update Zelle payment (staff dashboard)
 app.post("/api/zelle-payment", (req, res) => {
   const { name, amount } = req.body;
-  if (!name  !amount) return res.status(400).json({ error: "Missing name or amount" });
+  if (!name || !amount) return res.status(400).json({ error: "Missing name or amount" });
 
   try {
     db.prepare("INSERT INTO zelle_payment (name, amount) VALUES (?, ?)").run(name, amount);
@@ -308,4 +308,5 @@ app.listen(PORT, () => {
   console.log(🚀 Server running on http://localhost:${PORT});
 
 });
+
 
