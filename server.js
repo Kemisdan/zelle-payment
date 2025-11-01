@@ -23,7 +23,7 @@ app.use(express.json());
 // ✅ FIXED CORS SETUP
 const allowedOrigins = [
   "http://localhost:0000", // local dev (Vite)
-  "https://zellepayment.netlify.app/", // your Netlify domain
+  "https://zellepayment.netlify.app", // your Netlify domain
   "https://herblike-rosanne-valleylike.ngrok-free.dev", // ngrok tunnel
 ];
 
@@ -312,6 +312,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 
 });
+
 
 
 
