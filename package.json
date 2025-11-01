@@ -1,11 +1,7 @@
 {
-  git add package.json yarn.lock
-  git commit -m "Add all dependencies for deployment"
-  git push
-
   "name": "zelle-payment",
   "version": "1.0.0",
-  "description": "Zelle payment service",
+  "description": "",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -16,10 +12,11 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "body-parser": "^2.2.0",
-    "morgan": "^1.10.1"
-  },
-  "engines": {
-    "node": "22.x"
+    "morgan": "^1.10.1",
+    "chalk": "^5.6.2",
+    "better-sqlite3": "^12.4.1",
+    "node-fetch": "^3.4.0"
   }
 }
+
 
