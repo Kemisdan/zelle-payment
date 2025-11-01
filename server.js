@@ -27,7 +27,7 @@ app.use(
   cors({
     origin: function (origin, callback) {
       // allow requests with no origin (like mobile apps or curl)
-      if (!origin  allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         console.warn("🚫 Blocked by CORS:", origin);
@@ -306,4 +306,5 @@ app.get("/api/test-telegram", async (req, res) => {
 // ─────────────────────────────
 app.listen(PORT, () => {
   console.log(🚀 Server running on http://localhost:${PORT});
+
 });
