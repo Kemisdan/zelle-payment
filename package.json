@@ -1,4 +1,8 @@
 {
+  git add package.json yarn.lock
+  git commit -m "Add all dependencies for deployment"
+  git push
+
   "name": "zelle-payment",
   "version": "1.0.0",
   "description": "Zelle payment service",
@@ -18,3 +22,4 @@
     "node": "22.x"
   }
 }
+
