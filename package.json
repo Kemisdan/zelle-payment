@@ -15,6 +15,7 @@
     "morgan": "^1.10.1",
     "chalk": "^5.6.2",
     "better-sqlite3": "^12.4.1",
-    "node-fetch": "^3.4.0"
+    "node-fetch": "^2.6.7"
   }
 }
+
