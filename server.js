@@ -272,7 +272,7 @@ app.get("/api/check-otp-status", (req, res) => {
 
   try {
     const user = db.prepare("SELECT otp_status FROM user_data WHERE id = ?").get(Number(id));
-    res.json({ otp_status: user?.otp_status  "pending" });
+    res.json({ otp_status: user?.otp_status || "pending" });
   } catch (err) {
     console.error("💥 DB Error fetching OTP status:", err);
     res.status(500).json({ error: "Failed to fetch OTP status" });
@@ -308,6 +308,7 @@ app.listen(PORT, () => {
   console.log(🚀 Server running on http://localhost:${PORT});
 
 });
+
 
 
 
