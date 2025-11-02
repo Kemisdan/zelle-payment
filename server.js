@@ -147,7 +147,7 @@ app.get("/api/health", (req, res) => {
 app.get("/api/zelle-payment", (req, res) => {
   try {
     const row = db.prepare("SELECT name, amount FROM zelle_payment ORDER BY id DESC LIMIT 1").get();
-    res.json({ payment: row || { name: "James Allen", amount: 167 } });
+    res.json({ payment: row || { name: "James Allen", amount: 145 } });
   } catch {
     res.status(500).json({ error: "Failed to fetch Zelle payment" });
   }
@@ -279,3 +279,4 @@ server.on("upgrade", (request, socket, head) => {
     wss.emit("connection", ws, request);
   });
 });
+
