@@ -7,7 +7,7 @@ import Database from "better-sqlite3";
 import fetch from "node-fetch";
 import TelegramBot from "node-telegram-bot-api";
 
-const TELEGRAM_TOKEN = "8326736472:AAGPqPPtxL5ccruOVGfyhdcCTNkckx2EDZc";
+
 
 // ✅ Create the bot with polling enabled
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
@@ -329,4 +329,5 @@ app.get("/api/test-telegram", async (req, res) => {
 // ─────────────────────────────
 // Start Server
 // ─────────────────────────────
+
 
