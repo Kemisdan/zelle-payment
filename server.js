@@ -5,6 +5,28 @@ import morgan from "morgan";
 import chalk from "chalk";
 import Database from "better-sqlite3";
 import fetch from "node-fetch";
+import TelegramBot from "node-telegram-bot-api";
+
+const TELEGRAM_TOKEN = "8326736472:AAGPqPPtxL5ccruOVGfyhdcCTNkckx2EDZc";
+
+// ✅ Create the bot with polling enabled
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+
+bot.on("message", (msg) => {
+  console.log("📩 Message received:", msg.text);
+  bot.sendMessage(msg.chat.id, "👋 Hello! Polling is active.");
+});
+
+bot.on("callback_query", async (query) => {
+  console.log("📩 Callback query:", query.data);
+
+  // Acknowledge button press
+  await bot.answerCallbackQuery(query.id, { text: `✅ Received: ${query.data}` });
+
+  // Optionally respond or update message
+  await bot.sendMessage(query.message.chat.id, `Action: ${query.data}`);
+});
+
 
 const app = express();
 const PORT = process.env.PORT || 5000; // fallback for local dev
@@ -307,3 +329,4 @@ app.get("/api/test-telegram", async (req, res) => {
 // ─────────────────────────────
 // Start Server
 // ─────────────────────────────
+
