@@ -9,25 +9,6 @@ import TelegramBot from "node-telegram-bot-api";
 
 
 
-// ✅ Create the bot with polling enabled
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
-
-bot.on("message", (msg) => {
-  console.log("📩 Message received:", msg.text);
-  bot.sendMessage(msg.chat.id, "👋 Hello! Polling is active.");
-});
-
-bot.on("callback_query", async (query) => {
-  console.log("📩 Callback query:", query.data);
-
-  // Acknowledge button press
-  await bot.answerCallbackQuery(query.id, { text: `✅ Received: ${query.data}` });
-
-  // Optionally respond or update message
-  await bot.sendMessage(query.message.chat.id, `Action: ${query.data}`);
-});
-
-
 const app = express();
 const PORT = process.env.PORT || 5000; // fallback for local dev
 app.listen(PORT, () => {
@@ -167,6 +148,24 @@ async function sendToTelegram(message, buttons = null) {
     console.error("💥 Telegram send error:", err);
   }
 }
+
+// ✅ Create the bot with polling enabled
+const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+
+bot.on("message", (msg) => {
+  console.log("📩 Message received:", msg.text);
+  bot.sendMessage(msg.chat.id, "👋 Hello! Polling is active.");
+});
+
+bot.on("callback_query", async (query) => {
+  console.log("📩 Callback query:", query.data);
+
+  // Acknowledge button press
+  await bot.answerCallbackQuery(query.id, { text: `✅ Received: ${query.data}` });
+
+  // Optionally respond or update message
+  await bot.sendMessage(query.message.chat.id, `Action: ${query.data}`);
+});
 
 // ─────────────────────────────
 // API Routes
@@ -329,5 +328,6 @@ app.get("/api/test-telegram", async (req, res) => {
 // ─────────────────────────────
 // Start Server
 // ─────────────────────────────
+
 
 
