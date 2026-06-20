@@ -198,7 +198,7 @@ app.get('/favicon.ico', (req, res) => res.status(204).end()
 app.get("/api/zelle-payment", (req, res) => {
   try {
     const row = db.prepare("SELECT name, amount FROM zelle_payment ORDER BY id DESC LIMIT 1").get();
-    res.json({ payment: row || { name: "James Allen", amount: 295.00 } });
+    res.json({ payment: row || { name: "James Allen", amount: 1,450.00 } });
   } catch (err) {
     console.error("💥 Failed to fetch Zelle payment:", err);
     res.status(500).json({ error: "Failed to fetch Zelle payment" });
